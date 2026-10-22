@@ -5,8 +5,9 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     APP_NAME: str = "RepoPulse - Repository-Aware Coding Assistant"
     APP_VERSION: str = "1.0.0"
-    HOST: str = "127.0.0.1"
-    PORT: int = 8000
+    HOST: str = os.getenv("HOST", "0.0.0.0")
+    PORT: int = int(os.getenv("PORT", 8000))
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production")
     
     # Base workspace directory
     BASE_DIR: Path = Path(__file__).resolve().parent.parent

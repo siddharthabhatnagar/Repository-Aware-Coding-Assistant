@@ -170,6 +170,39 @@ Interactive API docs are available at `http://127.0.0.1:8000/docs`.
 
 ---
 
+## 🌐 Deploying to Render (render.com)
+
+This repository includes first-class support for **Render**:
+* `render.yaml` Blueprint specification (Infrastructure-as-Code)
+* `.python-version` configured for Python `3.12.0`
+* `Procfile` configured for production Uvicorn
+* Dynamic `$PORT` and `0.0.0.0` host binding
+
+### Option 1: Automatic Blueprint Deployment (Recommended)
+1. Go to your [Render Dashboard](https://dashboard.render.com/).
+2. Click **New +** > **Blueprint**.
+3. Connect your GitHub repository: `https://github.com/siddharthabhatnagar/Repository-Aware-Coding-Assistant`.
+4. Render will automatically detect [`render.yaml`](render.yaml) and configure:
+   - **Environment**: Python
+   - **Build Command**: `pip install --upgrade pip && pip install -r requirements.txt`
+   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - **Health Check Path**: `/api/health`
+5. Click **Apply**. Your app will build, index the sample repo on startup, and provide a public live URL!
+
+### Option 2: Manual Web Service Deployment
+1. Go to **New +** > **Web Service**.
+2. Select your repository `Repository-Aware-Coding-Assistant`.
+3. Set the following fields:
+   - **Runtime**: `Python`
+   - **Build Command**: `pip install --upgrade pip && pip install -r requirements.txt`
+   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+4. Under **Advanced** > **Add Environment Variable**:
+   - `PYTHON_VERSION`: `3.12.0`
+   - `ENVIRONMENT`: `production`
+5. Click **Create Web Service**.
+
+---
+
 ## 🧪 Running Automated Tests
 
 Run the test suite with pytest:
