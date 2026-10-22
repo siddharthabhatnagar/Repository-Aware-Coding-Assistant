@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RepoPulse - Repository-Aware Coding Assistant</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="app-header">
+        <div class="logo-container">
+            <div class="logo-icon">⚡</div>
+            <div class="brand-text">
+                <h1>RepoPulse</h1>
+                <div class="tagline">Repository-Aware Coding Assistant</div>
+            </div>
+        </div>
+
+        <div class="header-status">
+            <span class="badge badge-orange" id="repo-path-display" title="Active Repository">sample_repo</span>
+            <span class="badge badge-safe" id="index-status-badge">
+                <span class="pulse-dot"></span> Ready
+            </span>
+            <span class="badge badge-git" id="git-branch-badge">🌿 master</span>
+            <span class="badge badge-safe" title="Path traversal, zip bomb, and secret leakage protection active">🛡️ Sandboxed</span>
+
+            <button class="btn btn-glass" onclick="openModal('open-repo-modal')">📂 Open Repo</button>
+            <button class="btn btn-glass" onclick="openModal('settings-modal')">⚙️ Settings</button>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+        <button class="nav-tab active" data-tab="search">
+            <span>🔍</span> Code Search & RAG
+        </button>
+        <button class="nav-tab" data-tab="explorer">
+            <span>🌲</span> Repo Explorer & AST
+        </button>
+        <button class="nav-tab" data-tab="dependencies">
+            <span>🕸️</span> Dependency Graph
+        </button>
+        <button class="nav-tab" data-tab="tests">
+            <span>🧪</span> Test Suggestions
+        </button>
+        <button class="nav-tab" data-tab="patch">
+            <span>🩹</span> Patch Proposals
+        </button>
+        <button class="nav-tab" data-tab="review">
+            <span>🛡️</span> Code Review & Security
+        </button>
+        <button class="nav-tab" data-tab="git">
+            <span>📜</span> Git Timeline & Diff
+        </button>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="app-container">
+
+        <!-- TAB 1: Search & RAG -->
+        <section id="tab-search" class="tab-pane active">
+            <div class="search-bar-container">
+                <input type="text" id="search-query" class="input-glass" placeholder="Search codebase (e.g. 'token expiration verification' or 'divide calculation')..." onkeydown="if(event.key === 'Enter') handleSearch()">
+                
+                <select id="search-symbol-type" class="select-glass">
+                    <option value="all">All Symbols</option>
+                    <option value="function">Functions</option>
+                    <option value="class">Classes</option>
+                    <option value="method">Methods</option>
+                    <option value="import">Imports</option>
+                </select>
+
+                <input type="text" id="search-file-filter" class="input-glass" style="max-width: 200px;" placeholder="Filter by file path...">
+
+                <button class="btn btn-primary" onclick="handleSearch()">Search Code</button>
+            </div>
+
+            <!-- Quick sample searches -->
+            <div style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem; align-items: center; font-size: 0.85rem; color: var(--text-muted);">
+                <span>Quick Prompts:</span>
+                <button class="btn btn-glass" style="padding: 0.2rem 0.6rem; font-size: 0.75rem;" onclick="document.getElementById('search-query').value='JWT token expiration verification'; handleSearch();">JWT verify_token</button>
+                <button class="btn btn-glass" style="padding: 0.2rem 0.6rem; font-size: 0.75rem;" onclick="document.getElementById('search-query').value='Arithmetic divide operation'; handleSearch();">Calculator divide</button>
+                <button class="btn btn-glass" style="padding: 0.2rem 0.6rem; font-size: 0.75rem;" onclick="document.getElementById('search-query').value='SQL user query'; handleSearch();">Database find_user</button>
+            </div>
+
+            <div id="search-results" class="results-grid">
+                <div style="padding: 3rem; text-align: center; color: var(--text-muted);" class="glass-panel">
+                    Enter a natural language question or code symbol name above to perform code-aware hybrid search.
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: Repo Explorer & AST -->
+        <section id="tab-explorer" class="tab-pane">
+            <div class="split-view">
+                <!-- Left: File Tree -->
+                <div class="glass-panel file-tree-pane">
+                    <div class="pane-header">
+                        <span>Repository Files</span>
+                        <button class="btn btn-glass" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="fetchTree()">Refresh</button>
+                    </div>
+                    <div class="pane-body" id="tree-root"></div>
+                </div>
+
+                <!-- Center: Code Viewer -->
+                <div class="glass-panel code-viewer-pane">
+                    <div class="pane-header">
+                        <span id="current-file-title" class="mono" style="color: var(--amber-accent);">Select a file to view</span>
+                        <span class="badge badge-orange" id="code-view-lang">Code Viewer</span>
+                    </div>
+                    <div class="pane-body" style="padding: 0;">
+                        <div class="code-with-lines" style="padding: 1rem;">
+                            <div class="line-numbers" id="code-line-numbers"></div>
+                            <div class="code-content" id="code-content"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Tree-Sitter AST Symbols -->
+                <div class="glass-panel ast-symbols-pane">
+                    <div class="pane-header">
+                        <span>AST Symbols (Tree-Sitter)</span>
+                    </div>
+                    <div class="pane-body" id="ast-symbols-list">
+                        <div style="color: var(--text-muted); font-size: 0.85rem;">Select a file to inspect AST symbols.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: Dependency Graph -->
+        <section id="tab-dependencies" class="tab-pane">
+            <div id="dependencies-container"></div>
+        </section>
+
+        <!-- TAB 4: Test Suggestions -->
+        <section id="tab-tests" class="tab-pane">
+            <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+                <h3 style="color: var(--orange-light); margin-bottom: 0.5rem;">Targeted Unit Test Generator</h3>
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                    Identifies uncovered logic, boundary conditions, and generates complete unit tests with exact file and line references.
+                </p>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <input type="text" id="test-target-file" class="input-glass" placeholder="Target file (e.g. calculator.py or auth_service.py)" value="calculator.py">
+                    <button class="btn btn-primary" onclick="generateTests()">Generate Tests</button>
+                </div>
+                <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
+                    <button class="btn btn-glass" style="padding: 0.2rem 0.6rem; font-size: 0.75rem;" onclick="document.getElementById('test-target-file').value='calculator.py'; generateTests();">calculator.py</button>
+                    <button class="btn btn-glass" style="padding: 0.2rem 0.6rem; font-size: 0.75rem;" onclick="document.getElementById('test-target-file').value='auth_service.py'; generateTests();">auth_service.py</button>
+                    <button class="btn btn-glass" style="padding: 0.2rem 0.6rem; font-size: 0.75rem;" onclick="document.getElementById('test-target-file').value='database.py'; generateTests();">database.py</button>
+                </div>
+            </div>
+
+            <div id="test-results-container"></div>
+        </section>
+
+        <!-- TAB 5: Patch Proposals -->
+        <section id="tab-patch" class="tab-pane">
+            <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+                <h3 style="color: var(--orange-light); margin-bottom: 0.5rem;">Code Patch & Bug Fix Proposal</h3>
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                    Proposes unified Git diffs with root cause explanations and file:line references. Supports dry-run validation and 1-click apply.
+                </p>
+
+                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                    <input type="text" id="patch-issue-input" class="input-glass" placeholder="Describe the bug or feature (e.g. 'Fix unhandled ZeroDivisionError in calculator.py')...">
+                    <button class="btn btn-primary" onclick="proposePatch()">Propose Patch</button>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; align-items: center; font-size: 0.85rem; color: var(--text-muted);">
+                    <span>Common Bug Presets:</span>
+                    <button class="btn btn-glass" style="padding: 0.2rem 0.6rem; font-size: 0.75rem;" onclick="setPatchPrompt('Fix unhandled ZeroDivisionError in calculator.py')">Fix ZeroDivisionError (calculator.py)</button>
+                    <button class="btn btn-glass" style="padding: 0.2rem 0.6rem; font-size: 0.75rem;" onclick="setPatchPrompt('Fix expired token verification in auth_service.py')">Fix Expiration Bypass (auth_service.py)</button>
+                    <button class="btn btn-glass" style="padding: 0.2rem 0.6rem; font-size: 0.75rem;" onclick="setPatchPrompt('Fix SQL injection in database.py')">Fix SQL Injection (database.py)</button>
+                </div>
+            </div>
+
+            <div id="patch-result-container"></div>
+        </section>
+
+        <!-- TAB 6: Code Review & Security -->
+        <section id="tab-review" class="tab-pane">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <div>
+                    <h2 style="font-size: 1.3rem;">Automated Code & Security Audit</h2>
+                    <p style="color: var(--text-muted); font-size: 0.85rem;">OWASP vulnerabilities, CWE security risks, and code smells with file:line tags</p>
+                </div>
+                <button class="btn btn-primary" onclick="runCodeReview()">Re-scan Codebase</button>
+            </div>
+
+            <div id="review-results-container"></div>
+        </section>
+
+        <!-- TAB 7: Git Timeline -->
+        <section id="tab-git" class="tab-pane">
+            <div id="git-timeline-container"></div>
+        </section>
+
+    </main>
+
+    <!-- Modal: Open Repository -->
+    <div id="open-repo-modal" class="modal-overlay">
+        <div class="glass-panel modal-content">
+            <h3 style="color: var(--orange-light); margin-bottom: 0.75rem;">Open Local Repository</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                Enter the absolute or relative path of any repository directory. Untrusted content is sandboxed.
+            </p>
+            <input type="text" id="open-repo-input" class="input-glass" style="width: 100%; margin-bottom: 1.25rem;" value="sample_repo" placeholder="e.g. sample_repo or D:/MyProject">
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+                <button class="btn btn-glass" onclick="closeModal('open-repo-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="openRepoPath(document.getElementById('open-repo-input').value.trim())">Open & Index</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Settings (LLM Provider & Key) -->
+    <div id="settings-modal" class="modal-overlay">
+        <div class="glass-panel modal-content">
+            <h3 style="color: var(--orange-light); margin-bottom: 0.75rem;">LLM & System Settings</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                Configure optional LLM reasoning providers (OpenAI, Groq, Gemini) or use the built-in deterministic AST engine.
+            </p>
+            
+            <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.3rem;">Reasoning Provider</label>
+            <select id="settings-provider" class="select-glass" style="width: 100%; padding: 0.6rem; margin-bottom: 1rem;">
+                <option value="local">Built-in Code Engine (Zero-config local AST / FAISS)</option>
+                <option value="groq">Groq (Llama 3 / Mixtral - Ultra fast)</option>
+                <option value="openai">OpenAI (GPT-4o)</option>
+                <option value="gemini">Google Gemini</option>
+            </select>
+
+            <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.3rem;">API Key (Optional)</label>
+            <input type="password" id="settings-key" class="input-glass" style="width: 100%; margin-bottom: 1.5rem;" placeholder="sk-... or gsk_...">
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+                <button class="btn btn-glass" onclick="closeModal('settings-modal')">Close</button>
+                <button class="btn btn-primary" onclick="saveSettings()">Save Configuration</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/diff_renderer.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
